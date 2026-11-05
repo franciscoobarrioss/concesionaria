@@ -1,6 +1,6 @@
 from conexion import conectar
 
-#Prueba para ver si la DB fue conectada correctamente
+# Prueba para ver si la DB fue conectada correctamente
 conexion = None
 
 try:

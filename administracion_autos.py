@@ -6,10 +6,10 @@ def agregar_auto(auto, conexion_db):
         INSERT INTO autos (
             matricula, marca, modelo, anio, precio, kilometraje,
             motor, potencia, torque, combustible, transmision,
-            traccion, color
+            traccion, color, estado
         )
         VALUES (
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
         )
     """
     # Agrupa los atributos del auto en el mismo orden que las columnas del INSERT
@@ -26,7 +26,8 @@ def agregar_auto(auto, conexion_db):
         auto.combustible,
         auto.transmision,
         auto.traccion,
-        auto.color
+        auto.color,
+        auto.estado
     )
 
     try:
@@ -45,8 +46,9 @@ def listar_autos(conexion_db):
 
     with conexion_db.cursor() as cursor:
         cursor.execute(sql)
+        # Trae todos los autos encontrados en la base de datos
         autos = cursor.fetchall()
-    # Trae todos los autos encontrados en la base de datos
+    
 
     return autos
 
@@ -88,3 +90,93 @@ def buscar_autos(conexion_db, busqueda):
     except pymysql.MySQLError as error:
         print("Error al buscar autos:", error)
         return []
+
+def modificar_auto(id_auto, auto, conexion_db):
+    """Modifica todos los datos de un auto registrado en la base de datos"""
+
+    sql = """
+        UPDATE autos SET
+            matricula = %s,
+            marca = %s,
+            modelo = %s,
+            anio = %s,
+            precio = %s,
+            kilometraje = %s,
+            motor = %s,
+            potencia = %s,
+            torque = %s,
+            combustible = %s,
+            transmision = %s,
+            traccion = %s,
+            color = %s,
+            estado = %s
+        WHERE id_auto = %s
+    """
+
+    # Agrupa los nuevos datos del auto en el mismo orden que el UPDATE
+    valores = (
+        auto.matricula,
+        auto.marca,
+        auto.modelo,
+        auto.anio,
+        auto.precio,
+        auto.kilometraje,
+        auto.motor,
+        auto.potencia,
+        auto.torque,
+        auto.combustible,
+        auto.transmision,
+        auto.traccion,
+        auto.color,
+        auto.estado,
+        id_auto
+    )
+
+    try:
+        with conexion_db.cursor() as cursor:
+
+            # Verifica que el auto exista en la base de datos
+            cursor.execute(
+                "SELECT id_auto FROM autos WHERE id_auto = %s",
+                (id_auto,)
+            )
+
+            if cursor.fetchone() is None:
+                print("No se encontro el auto")
+                return False
+
+            # Ejecuta la modificacion de los datos
+            cursor.execute(sql, valores)
+
+        return True
+
+    except pymysql.MySQLError as error:
+        print("Error al modificar el auto:", error)
+        return False
+
+def eliminar_auto(id_auto, conexion_db):
+    """Elimina un auto de la base de datos utilizando su identificador interno"""
+
+    sql = "DELETE FROM autos WHERE id_auto = %s"
+
+    try:
+        with conexion_db.cursor() as cursor:
+
+            # Verifica que el auto exista en la base de datos
+            cursor.execute(
+                "SELECT id_auto FROM autos WHERE id_auto = %s",
+                (id_auto,)
+            )
+
+            if cursor.fetchone() is None:
+                print("No se encontro el auto")
+                return False
+
+            # Ejecuta la eliminacion del auto
+            cursor.execute(sql, (id_auto,))
+
+        return True
+
+    except pymysql.MySQLError as error:
+        print("Error al eliminar el auto:", error)
+        return False

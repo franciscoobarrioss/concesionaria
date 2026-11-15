@@ -38,7 +38,8 @@ def conectar():
                 combustible VARCHAR(30),
                 transmision VARCHAR(30),
                 traccion VARCHAR(30),
-                color VARCHAR(30)
+                color VARCHAR(30),
+                estado VARCHAR(20) NOT NULL DEFAULT 'Disponible'
             )
         """)
     

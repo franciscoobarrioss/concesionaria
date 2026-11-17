@@ -1,13 +1,14 @@
 from conexion import conectar
 from clase_autos import Auto
 from administracion_autos import agregar_auto, listar_autos, buscar_autos, modificar_auto, eliminar_auto, validar_auto
+from archivos_txt import crear_respaldo, leer_respaldo, comparar_respaldo
 
 # Crea un auto de prueba con datos ficticios
 auto_prueba = Auto(
     None,
     "Toyota",
     "Corolla",
-    2025,
+    2023,
     25000000,
     0,
     "2.0",
@@ -152,3 +153,15 @@ conexion_db = conectar()
 # )
 
 # print(validar_auto(auto_prueba))
+
+# Prueba la creasion de respaldos de la db
+#print(crear_respaldo(conexion_db))
+
+# Prueba leer el respaldo
+# autos_respaldo = leer_respaldo()
+
+# for auto in autos_respaldo:
+#     print(auto)
+
+#Prueba el comparar respaldo
+#print(comparar_respaldo(conexion_db))

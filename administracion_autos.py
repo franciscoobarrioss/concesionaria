@@ -1,7 +1,12 @@
 import pymysql
+from validaciones import (validar_marca, validar_modelo, validar_anio, validar_precio, validar_kilometraje, validar_estado)
 
 def agregar_auto(auto, conexion_db):
     """Agrega un auto a la base de datos con los atributos proporcionados por el usuario"""
+
+    if not validar_auto(auto):
+        return False
+    
     sql = """
         INSERT INTO autos (
             matricula, marca, modelo, anio, precio, kilometraje,
@@ -94,6 +99,9 @@ def buscar_autos(conexion_db, busqueda):
 def modificar_auto(id_auto, auto, conexion_db):
     """Modifica todos los datos de un auto registrado en la base de datos"""
 
+    if not validar_auto(auto):
+        return False
+
     sql = """
         UPDATE autos SET
             matricula = %s,
@@ -180,3 +188,32 @@ def eliminar_auto(id_auto, conexion_db):
     except pymysql.MySQLError as error:
         print("Error al eliminar el auto:", error)
         return False
+
+def validar_auto(auto):
+    """Comprueba que los datos principales del auto sean validos"""
+
+    if not validar_marca(auto.marca):
+        print("La marca no es valida")
+        return False
+
+    if not validar_modelo(auto.modelo):
+        print("El modelo no es valido")
+        return False
+
+    if not validar_anio(auto.anio):
+        print("El año no es valido")
+        return False
+
+    if not validar_precio(auto.precio):
+        print("El precio no es valido")
+        return False
+
+    if not validar_kilometraje(auto.kilometraje):
+        print("El kilometraje no es valido")
+        return False
+
+    if not validar_estado(auto.estado):
+        print("El estado no es valido")
+        return False
+
+    return True

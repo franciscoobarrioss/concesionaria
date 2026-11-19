@@ -217,3 +217,15 @@ def validar_auto(auto):
         return False
 
     return True
+
+# Obtiene todos los datos de un auto mediante su identificador
+def obtener_auto(id_auto, conexion_db):
+    """Obtiene los datos completos de un auto registrado"""
+
+    sql = "SELECT * FROM autos WHERE id_auto = %s"
+
+    with conexion_db.cursor() as cursor:
+        cursor.execute(sql, (id_auto,))
+        auto = cursor.fetchone()
+
+    return auto

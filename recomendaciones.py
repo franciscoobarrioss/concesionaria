@@ -77,3 +77,35 @@ def generar_recomendacion(auto1, auto2, preferencias):
     except Exception as error:
         print(f"Error al generar la recomendacion: {error}")
         return "No se pudo generar la recomendacion"
+
+if __name__ == "__main__":
+
+    auto1 = """
+    Marca: Toyota
+    Modelo: Corolla
+    Año: 2022
+    Precio: 25000000
+    Kilometraje: 30000
+    Combustible: Nafta
+    Transmision: Automatica
+    """
+
+    auto2 = """
+    Marca: Volkswagen
+    Modelo: Vento
+    Año: 2021
+    Precio: 22000000
+    Kilometraje: 45000
+    Combustible: Nafta
+    Transmision: Manual
+    """
+
+    preferencias = """
+    Presupuesto maximo: 26000000
+    Uso: Familiar y urbano
+    Prioridades: Comodidad, consumo y confiabilidad
+    """
+
+    recomendacion = generar_recomendacion(auto1, auto2, preferencias)
+
+    print(recomendacion)

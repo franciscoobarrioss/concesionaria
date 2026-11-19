@@ -60,16 +60,6 @@ class Aplicacion(ctk.CTk):
         )
         self.boton_autos.pack(pady=15)
 
-        # Boton para comparar autos
-        self.boton_comparar = ctk.CTkButton(
-            self.frame_menu,
-            text="Comparar autos",
-            width=200,
-            height=50,
-            command=self.mostrar_comparacion
-        )
-        self.boton_comparar.pack(pady=15)
-
         # Boton para gestionar el respaldo TXT
         self.boton_respaldo = ctk.CTkButton(
             self.frame_menu,
@@ -103,7 +93,7 @@ class Aplicacion(ctk.CTk):
 
     # Abre la seccion de comparacion de autos
     def mostrar_comparacion(self):
-        self.abrir_seccion("Comparacion de autos")
+        self.abrir_ventana_comparacion()
 
     # Abre la seccion de respaldo TXT
     def mostrar_respaldo(self):
@@ -228,6 +218,7 @@ class Aplicacion(ctk.CTk):
             font=("Arial", 17, "bold"),
             command=self.abrir_inventario
         )
+        
         boton_inventario.grid(
             row=1,
             column=0,
@@ -644,6 +635,15 @@ class Aplicacion(ctk.CTk):
         )
         boton_agregar.pack(side="right", padx=10)
 
+        # Boton para comparar autos
+        boton_comparar = ctk.CTkButton(
+            frame_controles,
+            text="Comparar autos",
+            width=150,
+            command=lambda: self.abrir_seleccion_comparacion()
+        )
+        boton_comparar.pack(side="right", padx=10)
+
         # Permite buscar presionando Enter
         entrada_busqueda.bind(
             "<Return>",
@@ -1043,6 +1043,590 @@ class Aplicacion(ctk.CTk):
                 "Error de eliminacion",
                 "No se pudo eliminar el auto seleccionado"
             )
+
+    # ==================================================
+    # SECCION 13 - COMPARACION DE AUTOS
+    # ==================================================
+
+    def abrir_ventana_comparacion(self):
+        """Crea la ventana principal para comparar autos"""
+
+        # Crea la ventana secundaria
+        ventana = ctk.CTkToplevel(self)
+        ventana.title("Comparacion de autos")
+        ventana.geometry("1000x700")
+
+        # Boton para volver al menu principal
+        self.agregar_boton_volver(ventana)
+
+        # ==================================================
+        # SUBSECCION 13.1 - TITULO
+        # ==================================================
+
+        titulo = ctk.CTkLabel(
+            ventana,
+            text="Comparacion de autos",
+            font=("Arial", 25, "bold")
+        )
+        titulo.pack(pady=20)
+
+        # Subtitulo
+        subtitulo = ctk.CTkLabel(
+            ventana,
+            text="Selecciona dos autos para comparar sus caracteristicas",
+            font=("Arial", 14)
+        )
+        subtitulo.pack(pady=5)
+    
+        # ==================================================
+        # SUBSECCION 13.2 - CARGAR AUTOS
+        # ==================================================
+
+        # Obtiene todos los autos registrados en la base de datos
+        autos = listar_autos(self.conexion_db)
+
+        # Diccionario para relacionar cada opcion con el ID del auto
+        opciones_autos = {}
+
+        for auto in autos:
+            nombre_auto = f"{auto[2]} {auto[3]} ({auto[4]}) - {auto[14]}"
+
+            opciones_autos[nombre_auto] = auto[0]
+
+        # Obtiene los nombres para los selectores
+        lista_opciones = list(opciones_autos.keys())
+        
+        # ==================================================
+        # SUBSECCION 13.3 - SELECTORES DE AUTOS
+        # ==================================================
+
+        if len(lista_opciones) < 2:
+            ctk.CTkLabel(
+                ventana,
+                text="Necesitas al menos dos autos registrados para compararlos",
+                font=("Arial", 14)
+            ).pack(pady=30)
+
+        else:
+
+            # Selector del primer auto
+            selector_auto_1 = ctk.CTkOptionMenu(
+                ventana,
+                values=lista_opciones,
+                width=350
+            )
+            selector_auto_1.pack(pady=15)
+
+            # Selector del segundo auto
+            selector_auto_2 = ctk.CTkOptionMenu(
+                ventana,
+                values=lista_opciones,
+                width=350
+            )
+            selector_auto_2.pack(pady=15)
+            
+        # ==================================================
+        # SUBSECCION 13.4 - VALIDAR SELECCION
+        # ==================================================
+
+        def validar_seleccion(valor):
+            """Evita que se seleccione el mismo auto dos veces"""
+
+            if selector_auto_1.get() == selector_auto_2.get():
+
+                if valor == "auto_1":
+                    selector_auto_2.set(lista_opciones[1])
+
+                else:
+                    selector_auto_1.set(lista_opciones[0])
+
+        # Asigna la validacion al primer selector
+        selector_auto_1.configure(
+            command=lambda valor: validar_seleccion("auto_1")
+        )
+
+        # Asigna la validacion al segundo selector
+        selector_auto_2.configure(
+            command=lambda valor: validar_seleccion("auto_2")
+        )
+    
+    
+    # ==================================================
+    # SECCION 14 - SELECCION DE AUTOS PARA COMPARAR
+    # ==================================================
+
+    def abrir_seleccion_comparacion(self):
+        """Muestra los autos disponibles para seleccionar y comparar"""
+
+        # Crea la ventana de seleccion
+        ventana = ctk.CTkToplevel(self)
+        ventana.title("Seleccionar autos para comparar")
+        ventana.geometry("1000x700")
+
+        self.agregar_boton_volver(ventana)
+
+        # ==================================================
+        # SUBSECCION 14.1 - TITULO
+        # ==================================================
+
+        titulo = ctk.CTkLabel(
+            ventana,
+            text="Seleccion de autos",
+            font=("Arial", 24, "bold")
+        )
+        titulo.pack(pady=15)
+
+        subtitulo = ctk.CTkLabel(
+            ventana,
+            text="Selecciona dos autos para realizar una comparacion",
+            font=("Arial", 14)
+        )
+        subtitulo.pack(pady=5)
+
+        # ==================================================
+        # SUBSECCION 14.2 - LISTADO DE AUTOS
+        # ==================================================
+
+        frame_lista = ctk.CTkScrollableFrame(ventana)
+        frame_lista.pack(
+            fill="both",
+            expand=True,
+            padx=20,
+            pady=15
+        )
+
+        # Obtiene todos los autos registrados
+        autos = listar_autos(self.conexion_db)
+
+        if not autos:
+            ctk.CTkLabel(
+                frame_lista,
+                text="No hay autos registrados",
+                font=("Arial", 16)
+            ).pack(pady=30)
+
+            return
+        
+        # ==================================================
+        # SUBSECCION 14.3 - MOSTRAR AUTOS
+        # ==================================================
+
+        # Guarda los autos seleccionados para comparar
+        autos_seleccionados = []
+
+        # Etiqueta para mostrar la cantidad seleccionada
+        etiqueta_seleccion = ctk.CTkLabel(
+            ventana,
+            text="Autos seleccionados: 0/2",
+            font=("Arial", 15, "bold")
+        )
+        etiqueta_seleccion.pack(pady=5)
+
+        # Boton para iniciar la comparacion
+        boton_comparar = ctk.CTkButton(
+            ventana,
+            text="Comparar seleccionados",
+            width=200,
+            state="disabled",
+            command=lambda: self.mostrar_comparacion_autos(
+                autos_seleccionados
+            )
+        )
+        boton_comparar.pack(pady=10)
+
+        # ==================================================
+        # SUBSECCION 14.4 - AGREGAR AUTOS A LA COMPARACION
+        # ==================================================
+
+        def agregar_auto_comparacion(id_auto):
+            """Agrega un auto a la lista temporal de comparacion"""
+
+            # Comprueba que no se haya seleccionado anteriormente
+            if id_auto in autos_seleccionados:
+                messagebox.showwarning(
+                    "Auto repetido",
+                    "Este auto ya fue agregado a la comparacion"
+                )
+                return
+
+            # Limita la seleccion a dos autos
+            if len(autos_seleccionados) >= 2:
+                messagebox.showwarning(
+                    "Limite alcanzado",
+                    "Solo podes seleccionar dos autos para comparar"
+                )
+                return
+
+            # Agrega el ID del auto seleccionado
+            autos_seleccionados.append(id_auto)
+
+            # Actualiza el contador
+            etiqueta_seleccion.configure(
+                text=f"Autos seleccionados: {len(autos_seleccionados)}/2"
+            )
+
+            # Habilita el boton cuando hay dos autos seleccionados
+            if len(autos_seleccionados) == 2:
+                boton_comparar.configure(state="normal")
+
+        def eliminar_auto_comparacion(id_auto):
+            """Elimina un auto de la lista temporal de comparacion"""
+
+            if id_auto in autos_seleccionados:
+                autos_seleccionados.remove(id_auto)
+
+                # Actualiza el contador
+                etiqueta_seleccion.configure(
+                    text=f"Autos seleccionados: {len(autos_seleccionados)}/2"
+                )
+
+                # Deshabilita el boton si quedan menos de dos autos
+                if len(autos_seleccionados) < 2:
+                    boton_comparar.configure(state="disabled")
+
+        # Muestra cada auto registrado
+        for fila, auto in enumerate(autos):
+
+            frame_auto = ctk.CTkFrame(frame_lista)
+            frame_auto.pack(fill="x", padx=10, pady=5)
+
+            # Datos principales del auto
+            nombre_auto = f"{auto[2]} {auto[3]} ({auto[4]})"
+
+            matricula = auto[1] if auto[1] else "Sin patente"
+            color = auto[13] if auto[13] else "Sin color"
+
+            etiqueta_auto = ctk.CTkLabel(
+                frame_auto,
+                text=f"{nombre_auto} | Color: {color} | Patente: {matricula} | Estado: {auto[14]}",
+                font=("Arial", 14)
+            )
+            etiqueta_auto.pack(side="left", padx=15, pady=12)
+
+            # Boton para agregar o quitar el auto de la comparacion
+            boton_agregar = ctk.CTkButton(
+                frame_auto,
+                text="+",
+                width=40
+            )
+            boton_agregar.pack(side="right", padx=15, pady=8)
+
+            def cambiar_seleccion(id_auto, boton):
+                """Alterna la seleccion de un auto"""
+
+                if id_auto in autos_seleccionados:
+                    eliminar_auto_comparacion(id_auto)
+                    boton.configure(text="+")
+
+                else:
+                    cantidad_anterior = len(autos_seleccionados)
+
+                    agregar_auto_comparacion(id_auto)
+
+                    # Comprueba si el auto se agrego correctamente
+                    if len(autos_seleccionados) > cantidad_anterior:
+                        boton.configure(text="-")
+
+            boton_agregar.configure(
+                command=lambda id_auto=auto[0], boton=boton_agregar:
+                    cambiar_seleccion(id_auto, boton)
+            )
+
+     
+    # ==================================================
+    # SECCION 15 - COMPARACION DE AUTOS
+    # ==================================================
+
+    def mostrar_comparacion_autos(self, autos_seleccionados):
+        """Muestra una comparacion entre dos autos"""
+
+        # Recupera los datos completos de ambos autos
+        auto_1 = obtener_auto(
+            autos_seleccionados[0],
+            self.conexion_db
+        )
+
+        auto_2 = obtener_auto(
+            autos_seleccionados[1],
+            self.conexion_db
+        )
+
+        # Comprueba que ambos autos existan
+        if not auto_1 or not auto_2:
+            messagebox.showerror(
+                "Error",
+                "No se pudieron obtener los datos de los autos seleccionados"
+            )
+            return
+
+        # Crea la ventana de comparacion
+        ventana = ctk.CTkToplevel(self)
+        ventana.title("Comparacion de autos")
+        ventana.geometry("1000x700")
+
+        self.agregar_boton_volver(ventana)
+
+        # Titulo principal
+        etiqueta_titulo = ctk.CTkLabel(
+            ventana,
+            text="Comparacion de autos",
+            font=("Arial", 26, "bold")
+        )
+        etiqueta_titulo.pack(pady=20)
+            
+        # Contenedor desplazable de la tabla comparativa
+        frame_comparacion = ctk.CTkScrollableFrame(
+            ventana,
+            orientation="vertical"
+        )
+        frame_comparacion.pack(
+            fill="both",
+            expand=True,
+            padx=30,
+            pady=20
+        )
+
+        # Organiza las columnas
+        frame_comparacion.grid_columnconfigure(0, weight=1)
+        frame_comparacion.grid_columnconfigure(1, weight=2)
+        frame_comparacion.grid_columnconfigure(2, weight=2)
+
+        
+        # Encabezados con la identificacion de cada auto
+        encabezados = [
+            "Caracteristica",
+            f"{auto_1[2]} {auto_1[3]}",
+            f"{auto_2[2]} {auto_2[3]}"
+        ]
+
+        for columna, encabezado in enumerate(encabezados):
+            etiqueta = ctk.CTkLabel(
+                frame_comparacion,
+                text=encabezado,
+                font=("Arial", 16, "bold"),
+                wraplength=250
+            )
+            etiqueta.grid(
+                row=0,
+                column=columna,
+                padx=15,
+                pady=15,
+                sticky="ew"
+            )
+
+        # Caracteristicas que se van a comparar
+        caracteristicas = [
+            ("Marca", 2),
+            ("Modelo", 3),
+            ("Año", 4),
+            ("Precio", 5),
+            ("Kilometraje", 6),
+            ("Motor", 7),
+            ("Potencia", 8),
+            ("Torque", 9),
+            ("Combustible", 10),
+            ("Transmision", 11),
+            ("Traccion", 12),
+            ("Color", 13),
+            ("Patente", 1),
+            ("Estado comercial", 14)
+        ]
+
+        # Genera las filas de la comparacion
+        for fila, (nombre, indice) in enumerate(caracteristicas, start=1):
+
+            valor_1 = auto_1[indice]
+            valor_2 = auto_2[indice]
+
+            # Aplica formato segun el tipo de dato
+            if indice == 5:
+                valor_1 = f"${valor_1:,.2f}" if valor_1 is not None else "No especificado"
+                valor_2 = f"${valor_2:,.2f}" if valor_2 is not None else "No especificado"
+
+            elif indice == 6:
+                valor_1 = f"{valor_1:,.0f} km" if valor_1 is not None else "No especificado"
+                valor_2 = f"{valor_2:,.0f} km" if valor_2 is not None else "No especificado"
+
+            elif indice == 9:
+                valor_1 = f"{valor_1} Nm" if valor_1 is not None else "No especificado"
+                valor_2 = f"{valor_2} Nm" if valor_2 is not None else "No especificado"
+
+            else:
+                valor_1 = str(valor_1) if valor_1 is not None else "No especificado"
+                valor_2 = str(valor_2) if valor_2 is not None else "No especificado"
+
+            # Evita mostrar valores vacios como None
+            if valor_1 is None:
+                valor_1 = "No especificado"
+
+            if valor_2 is None:
+                valor_2 = "No especificado"
+
+            etiqueta_caracteristica = ctk.CTkLabel(
+                frame_comparacion,
+                text=nombre,
+                font=("Arial", 13, "bold")
+            )
+            etiqueta_caracteristica.grid(
+                row=fila,
+                column=0,
+                padx=15,
+                pady=8,
+                sticky="w"
+            )
+
+            etiqueta_auto_1 = ctk.CTkLabel(
+                frame_comparacion,
+                text=str(valor_1),
+                font=("Arial", 13)
+            )
+            etiqueta_auto_1.grid(
+                row=fila,
+                column=1,
+                padx=15,
+                pady=8
+            )
+
+            etiqueta_auto_2 = ctk.CTkLabel(
+                frame_comparacion,
+                text=str(valor_2),
+                font=("Arial", 13)
+            )
+            etiqueta_auto_2.grid(
+                row=fila,
+                column=2,
+                padx=15,
+                pady=8
+            )
+
+
+        # ==================================================
+        # RESUMEN DE DIFERENCIAS ENTRE LOS AUTOS
+        # ==================================================
+
+        # Identifica cada auto con sus datos principales
+        nombre_auto_1 = (
+            f"{auto_1[2]} {auto_1[3]} - "
+            f"{auto_1[4]} - {auto_1[13]} - {auto_1[1]}"
+        )
+
+        nombre_auto_2 = (
+            f"{auto_2[2]} {auto_2[3]} - "
+            f"{auto_2[4]} - {auto_2[13]} - {auto_2[1]}"
+        )
+
+        def obtener_numero(valor):
+            """Convierte un valor numerico o con unidad a float"""
+
+            if valor is None:
+                return None
+
+            try:
+                return float(valor)
+
+            except (TypeError, ValueError):
+                import re
+
+                texto = str(valor).strip().upper().replace(",", ".")
+
+                coincidencia = re.search(
+                    r"-?\d+(?:\.\d+)?",
+                    texto
+                )
+
+                if not coincidencia:
+                    return None
+
+                numero = float(coincidencia.group())
+
+                # Convierte HP a CV para comparar en la misma unidad
+                if "HP" in texto and "CV" not in texto:
+                    numero *= 1.01387
+
+                return numero
+
+        # Analiza las diferencias entre dos valores
+        def analizar_diferencia(nombre, valor_1, valor_2, unidad, menor_es_mejor):
+            """Compara dos valores y determina cual destaca"""
+
+            numero_1 = obtener_numero(valor_1)
+            numero_2 = obtener_numero(valor_2)
+
+            if numero_1 is None or numero_2 is None:
+                return f"{nombre}: Datos insuficientes para comparar"
+
+            diferencia = abs(numero_1 - numero_2)
+
+            if numero_1 == numero_2:
+                return f"{nombre}: Ambos autos tienen el mismo valor"
+
+            if menor_es_mejor:
+                ganador = nombre_auto_1 if numero_1 < numero_2 else nombre_auto_2
+            else:
+                ganador = nombre_auto_1 if numero_1 > numero_2 else nombre_auto_2
+
+            if unidad == "$":
+                diferencia_formateada = f"${diferencia:,.2f}"
+            else:
+                diferencia_formateada = f"{diferencia:,.2f} {unidad}"
+
+            return (
+                f"{nombre}: Diferencia de {diferencia_formateada} "
+                f"- Destaca {ganador}"
+            )
+
+        # Calcula las diferencias principales
+        resumen_precio = analizar_diferencia(
+            "Precio",
+            auto_1[5],
+            auto_2[5],
+            "$",
+            True
+        )
+
+        resumen_kilometraje = analizar_diferencia(
+            "Kilometraje",
+            auto_1[6],
+            auto_2[6],
+            "km",
+            True
+        )
+
+        resumen_potencia = analizar_diferencia(
+            "Potencia",
+            auto_1[8],
+            auto_2[8],
+            "CV",
+            False
+        )
+
+        # Contenedor del resumen
+        frame_resumen = ctk.CTkFrame(ventana)
+        frame_resumen.pack(
+            fill="x",
+            padx=30,
+            pady=15
+        )
+
+        etiqueta_resumen = ctk.CTkLabel(
+            frame_resumen,
+            text="Resumen de diferencias",
+            font=("Arial", 18, "bold")
+        )
+        etiqueta_resumen.pack(pady=10)
+
+        # Muestra los resultados
+        for resultado in [
+            resumen_precio,
+            resumen_kilometraje,
+            resumen_potencia
+        ]:
+            etiqueta = ctk.CTkLabel(
+                frame_resumen,
+                text=resultado,
+                font=("Arial", 13)
+            )
+            etiqueta.pack(pady=5)
 
 
 

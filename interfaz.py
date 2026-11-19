@@ -1,7 +1,7 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from clase_autos import Auto
-from administracion_autos import agregar_auto, listar_autos, obtener_auto
+from administracion_autos import agregar_auto, listar_autos, obtener_auto, modificar_auto, eliminar_auto as eliminar_auto_db
 
 # ==================================================
 # CLASE PRINCIPAL DE LA APLICACION
@@ -375,7 +375,7 @@ class Aplicacion(ctk.CTk):
             sticky="w"
         )
 
-        campo_estado = ctk.CTkComboBox(
+        campo_estado = ctk.CTkOptionMenu(
             frame_campos,
             values=["Disponible", "Reservado", "Vendido"],
             width=250
@@ -594,7 +594,7 @@ class Aplicacion(ctk.CTk):
                 frame_tabla,
                 text="Ver detalles",
                 width=100,
-                command=lambda id_auto=auto[0]: self.mostrar_detalles_auto(id_auto)
+                command=lambda id_auto=auto[0]: self.mostrar_detalles_auto(id_auto, ventana)
             )
             boton_detalles.grid(
                 row=fila,
@@ -607,7 +607,7 @@ class Aplicacion(ctk.CTk):
     # SECCION 9 - DETALLES DEL AUTO
     # ==================================================
 
-    def mostrar_detalles_auto(self, id_auto):
+    def mostrar_detalles_auto(self, id_auto, ventana_inventario):
         """Muestra toda la informacion del auto seleccionado"""
 
         # Obtener los datos completos desde MySQL
@@ -647,12 +647,6 @@ class Aplicacion(ctk.CTk):
             ventana,
             width=520,
             height=480
-        )
-        frame_datos.pack(
-            fill="both",
-            expand=True,
-            padx=25,
-            pady=10
         )
 
         # Organizar los datos para mostrarlos
@@ -707,14 +701,301 @@ class Aplicacion(ctk.CTk):
                 pady=9,
                 sticky="w"
             )
+        
+        
+        # ==================================================
+        # BOTON PARA MODIFICAR EL AUTO
+        # ==================================================
 
-        # Boton para cerrar la ventana
-        boton_cerrar = ctk.CTkButton(
+        boton_modificar = ctk.CTkButton(
             ventana,
-            text="Cerrar",
-            command=ventana.destroy
+            text="Modificar auto",
+            width=180,
+            height=40,
+            command=lambda: self.abrir_formulario_modificar_auto(id_auto, ventana, ventana_inventario)
         )
-        boton_cerrar.pack(pady=15)
+        boton_modificar.pack(side="bottom", pady=10)
+
+        # ==================================================
+        # BOTON PARA ELIMINAR EL AUTO
+        # ==================================================
+
+        boton_eliminar = ctk.CTkButton(
+            ventana,
+            text="Eliminar auto",
+            width=180,
+            height=40,
+            fg_color="#A83232",
+            hover_color="#852626",
+            command=lambda: self.confirmar_eliminacion_auto(
+                id_auto,
+                ventana,
+                ventana_inventario
+            )
+        )
+        boton_eliminar.pack(side="bottom", pady=10)
+
+        # Muestra el contenedor de datos ocupando el espacio restante
+        frame_datos.pack(
+            fill="both",
+            expand=True,
+            padx=25,
+            pady=10
+        )
+
+
+    # ==================================================
+    # SECCION 10 - FORMULARIO PARA MODIFICAR AUTOS
+    # ==================================================
+
+    def abrir_formulario_modificar_auto(self, id_auto, ventana_detalles, ventana_inventario):
+        """Abre un formulario con los datos actuales del auto"""
+
+        # Recupera los datos del auto
+        auto = obtener_auto(id_auto, self.conexion_db)
+
+        if not auto:
+            messagebox.showerror(
+                "Error",
+                "No se pudo encontrar el auto seleccionado"
+            )
+            return
+
+        # Crea la ventana de modificacion
+        ventana = ctk.CTkToplevel(self)
+        ventana.title("Modificar auto")
+        ventana.geometry("850x750")
+
+        self.agregar_boton_volver(ventana)
+
+        # Contenedor con desplazamiento
+        frame_principal = ctk.CTkScrollableFrame(ventana)
+        frame_principal.pack(
+            fill="both",
+            expand=True,
+            padx=20,
+            pady=20
+        )
+
+        # Titulo
+        titulo = ctk.CTkLabel(
+            frame_principal,
+            text=f"Modificar {auto[2]} {auto[3]}",
+            font=("Arial", 24, "bold")
+        )
+        titulo.pack(pady=20)
+
+        # Contenedor de los campos
+        frame_campos = ctk.CTkFrame(frame_principal)
+        frame_campos.pack(fill="x", padx=15, pady=10)
+
+        # Relaciona los atributos con los datos actuales
+        campos = [
+            ("matricula", "Matricula", auto[1]),
+            ("marca", "Marca", auto[2]),
+            ("modelo", "Modelo", auto[3]),
+            ("anio", "Año", auto[4]),
+            ("precio", "Precio", auto[5]),
+            ("kilometraje", "Kilometraje", auto[6]),
+            ("motor", "Motor", auto[7]),
+            ("potencia", "Potencia", auto[8]),
+            ("torque", "Torque", auto[9]),
+            ("combustible", "Combustible", auto[10]),
+            ("transmision", "Transmision", auto[11]),
+            ("traccion", "Traccion", auto[12]),
+            ("color", "Color", auto[13])
+        ]
+
+        # Diccionario para almacenar las entradas
+        entradas = {}
+
+        # Distribuye los campos en dos columnas
+        for indice, (atributo, nombre, valor) in enumerate(campos):
+
+            fila = indice // 2
+            columna = (indice % 2) * 2
+
+            etiqueta = ctk.CTkLabel(
+                frame_campos,
+                text=nombre
+            )
+            etiqueta.grid(
+                row=fila,
+                column=columna,
+                padx=10,
+                pady=12,
+                sticky="w"
+            )
+
+            entrada = ctk.CTkEntry(
+                frame_campos,
+                width=250
+            )
+            entrada.grid(
+                row=fila,
+                column=columna + 1,
+                padx=10,
+                pady=12
+            )
+
+            # Carga el valor actual del auto
+            entrada.insert(0, str(valor) if valor is not None else "")
+
+            entradas[atributo] = entrada
+
+        # Campo para modificar el estado
+        etiqueta_estado = ctk.CTkLabel(
+            frame_campos,
+            text="Estado"
+        )
+        etiqueta_estado.grid(
+            row=7,
+            column=0,
+            padx=10,
+            pady=12,
+            sticky="w"
+        )
+
+        campo_estado = ctk.CTkOptionMenu(
+            frame_campos,
+            values=["Disponible", "Reservado", "Vendido"],
+            width=250
+        )
+        campo_estado.grid(
+            row=7,
+            column=1,
+            padx=10,
+            pady=12
+        )
+        campo_estado.set(auto[14])
+
+        # Boton para guardar los cambios
+        boton_guardar = ctk.CTkButton(
+            frame_principal,
+            text="Guardar modificaciones",
+            width=220,
+            height=45,
+            command=lambda: self.guardar_modificacion_auto(id_auto, entradas, campo_estado, ventana, ventana_detalles, ventana_inventario)
+        )
+        boton_guardar.pack(pady=25)
+
+
+    # ==================================================
+    # SECCION 11 - GUARDAR MODIFICACIONES
+    # ==================================================
+
+    def guardar_modificacion_auto(self, id_auto, entradas, campo_estado, ventana, ventana_detalles, ventana_inventario):
+        """Recupera los datos modificados y actualiza el auto"""
+
+        # Obtiene los valores ingresados
+        datos = {}
+
+        for atributo, entrada in entradas.items():
+            datos[atributo] = entrada.get().strip()
+
+        # Convierte los campos numericos
+        try:
+            datos["anio"] = int(datos["anio"])
+            datos["precio"] = float(datos["precio"])
+            datos["kilometraje"] = int(datos["kilometraje"])
+
+        except ValueError:
+            messagebox.showerror(
+                "Datos incorrectos",
+                "El año, precio y kilometraje deben tener valores numericos"
+            )
+            return
+
+        # Convierte la matricula vacia en None
+        if not datos["matricula"]:
+            datos["matricula"] = None
+
+        # Obtiene el estado seleccionado
+        estado = campo_estado.get()
+
+        # Crea el objeto con los datos actualizados
+        auto = Auto(
+            datos["matricula"],
+            datos["marca"],
+            datos["modelo"],
+            datos["anio"],
+            datos["precio"],
+            datos["kilometraje"],
+            datos["motor"],
+            datos["potencia"],
+            datos["torque"],
+            datos["combustible"],
+            datos["transmision"],
+            datos["traccion"],
+            datos["color"],
+            estado
+        )
+
+        # Intenta actualizar el registro en MySQL
+        if modificar_auto(id_auto, auto, self.conexion_db):
+
+            messagebox.showinfo(
+                "Modificacion exitosa",
+                "Los datos del auto fueron actualizados correctamente"
+            )
+
+            # Cierra los formularios y actualiza los detalles
+            ventana.destroy()
+            ventana_detalles.destroy()
+            # Actualiza la ventana del inventario
+            ventana_inventario.destroy()
+            self.abrir_inventario()
+
+        else:
+            messagebox.showerror(
+                "Error de modificacion",
+                "No se pudieron actualizar los datos del auto"
+            )
+        
+
+    # ==================================================
+    # SECCION 12 - ELIMINAR AUTOS
+    # ==================================================
+
+    def confirmar_eliminacion_auto(
+        self,
+        id_auto,
+        ventana_detalles,
+        ventana_inventario
+    ):
+        """Solicita confirmacion antes de eliminar un auto"""
+
+        # Solicita confirmacion al usuario
+        confirmacion = messagebox.askyesno(
+            "Confirmar eliminacion",
+            "¿Estas seguro de que deseas eliminar este auto?\n"
+            "Esta accion no se puede deshacer"
+        )
+
+        if not confirmacion:
+            return
+
+        # Intenta eliminar el registro de MySQL
+        if eliminar_auto_db(id_auto, self.conexion_db):
+
+            messagebox.showinfo(
+                "Eliminacion exitosa",
+                "El auto fue eliminado correctamente"
+            )
+
+            # Cierra las ventanas anteriores
+            ventana_detalles.destroy()
+            ventana_inventario.destroy()
+
+            # Actualiza el inventario
+            self.abrir_inventario()
+
+        else:
+            messagebox.showerror(
+                "Error de eliminacion",
+                "No se pudo eliminar el auto seleccionado"
+            )
+
 
 
 

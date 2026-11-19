@@ -1,7 +1,7 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from clase_autos import Auto
-from administracion_autos import agregar_auto, listar_autos, obtener_auto, modificar_auto, eliminar_auto as eliminar_auto_db
+from administracion_autos import agregar_auto, listar_autos, obtener_auto, modificar_auto, eliminar_auto as eliminar_auto_db, buscar_autos
 
 # ==================================================
 # CLASE PRINCIPAL DE LA APLICACION
@@ -99,7 +99,7 @@ class Aplicacion(ctk.CTk):
 
     # Abre la seccion de administracion de autos
     def mostrar_autos(self):
-        self.abrir_administracion_autos()
+        self.abrir_inventario()
 
     # Abre la seccion de comparacion de autos
     def mostrar_comparacion(self):
@@ -219,22 +219,6 @@ class Aplicacion(ctk.CTk):
             pady=25
         )
 
-        # Boton para buscar un auto
-        boton_buscar = ctk.CTkButton(
-            frame_opciones,
-            text="Buscar auto",
-            width=250,
-            height=100,
-            font=("Arial", 17, "bold"),
-            command=lambda: self.abrir_seccion("Buscar auto")
-        )
-        boton_buscar.grid(
-            row=0,
-            column=1,
-            padx=20,
-            pady=25
-        )
-
         # Boton para consultar el inventario completo
         boton_inventario = ctk.CTkButton(
             frame_opciones,
@@ -271,7 +255,7 @@ class Aplicacion(ctk.CTk):
     # SECCION 6 - FORMULARIO PARA AGREGAR AUTOS
     # ==================================================
 
-    def abrir_formulario_agregar_auto(self):
+    def abrir_formulario_agregar_auto(self, actualizar_tabla, entrada_busqueda):
         """Crea el formulario para registrar un auto nuevo"""
 
         ventana = ctk.CTkToplevel(self)
@@ -393,15 +377,17 @@ class Aplicacion(ctk.CTk):
         # ==================================================
 
         boton_guardar = ctk.CTkButton(
-            frame_principal,
-            text="Guardar auto",
-            width=220,
-            height=45,
-            command=lambda: self.guardar_auto(
-                entradas,
-                campo_estado,
-                ventana
-            )
+        frame_principal,
+        text="Guardar auto",
+        width=220,
+        height=45,
+        command=lambda: self.guardar_auto(
+            entradas,
+            campo_estado,
+            ventana,
+            actualizar_tabla,
+            entrada_busqueda
+        )
         )
         boton_guardar.pack(pady=25)
 
@@ -410,7 +396,7 @@ class Aplicacion(ctk.CTk):
     # SECCION 7 - GUARDAR AUTO EN MYSQL
     # ==================================================
 
-    def guardar_auto(self, entradas, campo_estado, ventana):
+    def guardar_auto(self, entradas, campo_estado, ventana, actualizar_tabla, entrada_busqueda):
         """Recupera los datos del formulario y registra el auto"""
 
         # Obtiene los valores ingresados en el formulario
@@ -465,28 +451,28 @@ class Aplicacion(ctk.CTk):
                 "El auto fue agregado correctamente"
             )
 
-            # Limpia los campos despues del registro
-            for entrada in entradas.values():
-                entrada.delete(0, "end")
+            # Cierra el formulario de registro
+            ventana.destroy()
 
-            campo_estado.set("Disponible")
+            # Actualiza la tabla conservando la busqueda actual
+            actualizar_tabla(entrada_busqueda.get())
 
         else:
             messagebox.showerror(
                 "Error de registro",
                 "No se pudo agregar el auto. Verifica los datos ingresados"
             )
-    
-    # ==================================================
-    # SECCION 8 - INVENTARIO DE AUTOS
-    # ==================================================
 
+
+    # ==================================================
+    # SECCION 8 - INVENTARIO Y ADMINISTRACION DE AUTOS
+    # ==================================================
     def abrir_inventario(self):
-        """Muestra los autos registrados en la base de datos"""
+        """Muestra y permite administrar los autos registrados"""
 
         ventana = ctk.CTkToplevel(self)
         ventana.title("Inventario de autos")
-        ventana.geometry("1100x650")
+        ventana.geometry("1100x700")
         self.agregar_boton_volver(ventana)
 
         # ==================================================
@@ -498,14 +484,28 @@ class Aplicacion(ctk.CTk):
             text="Inventario de autos",
             font=("Arial", 24, "bold")
         )
-        titulo.pack(pady=20)
+        titulo.pack(pady=15)
 
         # ==================================================
-        # SUBSECCION 8.2 - TABLA DE AUTOS
+        # SUBSECCION 8.2 - CONTROLES DE ADMINISTRACION
         # ==================================================
 
-        # Contenedor de la tabla
-        frame_tabla = ctk.CTkFrame(ventana)
+        frame_controles = ctk.CTkFrame(ventana)
+        frame_controles.pack(fill="x", padx=20, pady=10)
+
+        # Campo para ingresar el criterio de busqueda
+        entrada_busqueda = ctk.CTkEntry(
+            frame_controles,
+            width=350,
+            placeholder_text="Marca, modelo, matricula o caracteristica"
+        )
+        entrada_busqueda.pack(side="left", padx=10, pady=15)
+
+        # ==================================================
+        # SUBSECCION 8.3 - CONTENEDOR DE RESULTADOS
+        # ==================================================
+
+        frame_tabla = ctk.CTkScrollableFrame(ventana)
         frame_tabla.pack(
             fill="both",
             expand=True,
@@ -513,95 +513,146 @@ class Aplicacion(ctk.CTk):
             pady=10
         )
 
-        # Obtiene los autos registrados en MySQL
-        autos = listar_autos(self.conexion_db)
-
-        # Muestra un mensaje si no existen registros
-        if not autos:
-            etiqueta_vacia = ctk.CTkLabel(
-                frame_tabla,
-                text="No hay autos registrados",
-                font=("Arial", 16)
-            )
-            etiqueta_vacia.pack(pady=30)
-            return
-
         # ==================================================
-        # SUBSECCION 8.3 - ENCABEZADOS
+        # SUBSECCION 8.4 - CARGAR Y MOSTRAR AUTOS
         # ==================================================
 
-        columnas = [
-            "ID",
-            "Matricula",
-            "Marca",
-            "Modelo",
-            "Año",
-            "Precio",
-            "Kilometraje",
-            "Estado",
-            "Acciones"
-        ]
+        def actualizar_tabla(busqueda=""):
 
-        for indice, columna in enumerate(columnas):
+            # Limpia los resultados anteriores
+            for elemento in frame_tabla.winfo_children():
+                elemento.destroy()
 
-            etiqueta = ctk.CTkLabel(
-                frame_tabla,
-                text=columna,
-                font=("Arial", 13, "bold")
-            )
-            etiqueta.grid(
-                row=0,
-                column=indice,
-                padx=8,
-                pady=12
-            )
+            # Obtiene todos los autos o filtra por busqueda
+            if busqueda.strip():
+                autos = buscar_autos(self.conexion_db, busqueda.strip())
+            else:
+                autos = listar_autos(self.conexion_db)
 
-        # ==================================================
-        # SUBSECCION 8.4 - DATOS DE LOS AUTOS
-        # ==================================================
+            # Muestra un mensaje si no hay resultados
+            if not autos:
+                etiqueta_vacia = ctk.CTkLabel(
+                    frame_tabla,
+                    text="No se encontraron autos",
+                    font=("Arial", 16)
+                )
+                etiqueta_vacia.pack(pady=30)
+                return
 
-        # Recorre los registros y muestra sus datos principales
-        for fila, auto in enumerate(autos, start=1):
-
-            # Columnas seleccionadas de la tabla autos
-            datos = [
-                auto[0],
-                auto[1] if auto[1] else "-",
-                auto[2],
-                auto[3],
-                auto[4],
-                f"$ {auto[5]:,.2f}",
-                auto[6],
-                auto[14]
+            # Encabezados de la tabla
+            columnas = [
+                "ID",
+                "Matricula",
+                "Marca",
+                "Modelo",
+                "Año",
+                "Precio",
+                "Kilometraje",
+                "Estado",
+                "Acciones"
             ]
 
-            # Crea una etiqueta para cada dato
-            for columna, dato in enumerate(datos):
-
+            for indice, columna in enumerate(columnas):
                 etiqueta = ctk.CTkLabel(
                     frame_tabla,
-                    text=str(dato)
+                    text=columna,
+                    font=("Arial", 13, "bold")
                 )
                 etiqueta.grid(
-                    row=fila,
-                    column=columna,
+                    row=0,
+                    column=indice,
                     padx=8,
-                    pady=10
+                    pady=12
                 )
-            
-            # Boton para consultar los detalles del auto
-            boton_detalles = ctk.CTkButton(
-                frame_tabla,
-                text="Ver detalles",
-                width=100,
-                command=lambda id_auto=auto[0]: self.mostrar_detalles_auto(id_auto, ventana)
+
+            # Muestra los datos de cada auto
+            for fila, auto in enumerate(autos, start=1):
+
+                datos = [
+                    auto[0],
+                    auto[1] if auto[1] else "-",
+                    auto[2],
+                    auto[3],
+                    auto[4],
+                    f"$ {auto[5]:,.2f}",
+                    auto[6],
+                    auto[14]
+                ]
+
+                for columna, dato in enumerate(datos):
+                    etiqueta = ctk.CTkLabel(
+                        frame_tabla,
+                        text=str(dato)
+                    )
+                    etiqueta.grid(
+                        row=fila,
+                        column=columna,
+                        padx=8,
+                        pady=10
+                    )
+
+                # Boton para consultar los detalles
+                boton_detalles = ctk.CTkButton(
+                    frame_tabla,
+                    text="Ver detalles",
+                    width=100,
+                    command=lambda id_auto=auto[0]: self.mostrar_detalles_auto(
+                        id_auto,
+                        ventana
+                    )
+                )
+                boton_detalles.grid(
+                    row=fila,
+                    column=8,
+                    padx=8,
+                    pady=5
+                )
+
+        # ==================================================
+        # SUBSECCION 8.5 - BOTONES DE BUSQUEDA
+        # ==================================================
+
+        boton_buscar = ctk.CTkButton(
+            frame_controles,
+            text="Buscar",
+            width=100,
+            command=lambda: actualizar_tabla(entrada_busqueda.get())
+        )
+        boton_buscar.pack(side="left", padx=5)
+
+        boton_limpiar = ctk.CTkButton(
+            frame_controles,
+            text="Limpiar",
+            width=100,
+            fg_color="gray",
+            command=lambda: (
+                entrada_busqueda.delete(0, "end"),
+                actualizar_tabla()
             )
-            boton_detalles.grid(
-                row=fila,
-                column=8,
-                padx=8,
-                pady=5
-            )
+        )
+        boton_limpiar.pack(side="left", padx=5)
+
+        # ==================================================
+        # SUBSECCION 8.6 - BOTON PARA AGREGAR AUTOS
+        # ==================================================
+
+        boton_agregar = ctk.CTkButton(
+            frame_controles,
+            text="+ Agregar auto",
+            width=140,
+            command=lambda: self.abrir_formulario_agregar_auto(actualizar_tabla, entrada_busqueda)
+        )
+        boton_agregar.pack(side="right", padx=10)
+
+        # Permite buscar presionando Enter
+        entrada_busqueda.bind(
+            "<Return>",
+            lambda evento: actualizar_tabla(entrada_busqueda.get())
+        )
+
+        # Carga todos los autos al abrir el inventario
+        actualizar_tabla()
+
     
     # ==================================================
     # SECCION 9 - DETALLES DEL AUTO
@@ -642,7 +693,7 @@ class Aplicacion(ctk.CTk):
         )
         subtitulo.pack(pady=(0, 20))
 
-       # Contenedor con desplazamiento vertical
+        # Contenedor con desplazamiento vertical
         frame_datos = ctk.CTkScrollableFrame(
             ventana,
             width=520,
@@ -701,25 +752,22 @@ class Aplicacion(ctk.CTk):
                 pady=9,
                 sticky="w"
             )
-        
-        
-        # ==================================================
-        # BOTON PARA MODIFICAR EL AUTO
-        # ==================================================
 
+        # Boton para modificar el auto
         boton_modificar = ctk.CTkButton(
             ventana,
             text="Modificar auto",
             width=180,
             height=40,
-            command=lambda: self.abrir_formulario_modificar_auto(id_auto, ventana, ventana_inventario)
+            command=lambda: self.abrir_formulario_modificar_auto(
+                id_auto,
+                ventana,
+                ventana_inventario
+            )
         )
         boton_modificar.pack(side="bottom", pady=10)
 
-        # ==================================================
-        # BOTON PARA ELIMINAR EL AUTO
-        # ==================================================
-
+        # Boton para eliminar el auto
         boton_eliminar = ctk.CTkButton(
             ventana,
             text="Eliminar auto",
@@ -735,7 +783,7 @@ class Aplicacion(ctk.CTk):
         )
         boton_eliminar.pack(side="bottom", pady=10)
 
-        # Muestra el contenedor de datos ocupando el espacio restante
+        # Muestra los datos ocupando el espacio restante
         frame_datos.pack(
             fill="both",
             expand=True,

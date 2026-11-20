@@ -2,6 +2,9 @@ import customtkinter as ctk
 from tkinter import messagebox
 from clase_autos import Auto
 from administracion_autos import agregar_auto, listar_autos, obtener_auto, modificar_auto, eliminar_auto as eliminar_auto_db, buscar_autos
+from analisis_autos import analizar_diferencia
+from archivos_txt import crear_respaldo, leer_respaldo, comparar_respaldo
+from validaciones import normalizar_texto
 
 # ==================================================
 # CLASE PRINCIPAL DE LA APLICACION
@@ -63,7 +66,7 @@ class Aplicacion(ctk.CTk):
         # Boton para gestionar el respaldo TXT
         self.boton_respaldo = ctk.CTkButton(
             self.frame_menu,
-            text="Respaldo TXT",
+            text="Gestión de respaldos",
             width=200,
             height=50,
             command=self.mostrar_respaldo
@@ -81,8 +84,123 @@ class Aplicacion(ctk.CTk):
             command=self.destroy
         )
         self.boton_salir.pack(pady=20)
+        
+    def crear_respaldo_interfaz(self, ventana):
+        """Crea un respaldo de los autos registrados en MySQL"""
 
+        resultado = crear_respaldo(self.conexion_db)
 
+        if resultado:
+            messagebox.showinfo(
+                "Respaldo creado",
+                "El respaldo se creo correctamente"
+            )
+        else:
+            messagebox.showerror(
+                "Error",
+                "No se pudo crear el respaldo"
+            )
+
+    def leer_respaldo_interfaz(self, ventana):
+        """Muestra los autos guardados en el archivo de respaldo"""
+
+        autos = leer_respaldo()
+
+        # Comprueba si existen datos guardados
+        if not autos:
+            messagebox.showwarning(
+                "Respaldo vacio",
+                "No hay datos guardados o no existe el archivo de respaldo"
+            )
+            return
+
+        # Convierte las lineas del TXT en registros
+        autos = [
+            linea.strip().split("|")
+            for linea in autos
+        ]
+
+        # Crea una ventana para consultar el respaldo
+        ventana_respaldo = ctk.CTkToplevel(ventana)
+        ventana_respaldo.title("Consultar respaldo")
+        ventana_respaldo.geometry("1100x650")
+
+        # Contenedor de la tabla
+        frame_tabla = ctk.CTkScrollableFrame(ventana_respaldo)
+        frame_tabla.pack(
+            fill="both",
+            expand=True,
+            padx=20,
+            pady=15
+        )
+
+        # Encabezados de la tabla
+        columnas = [
+            "ID",
+            "Matricula",
+            "Marca",
+            "Modelo",
+            "Año",
+            "Precio",
+            "Kilometraje",
+            "Estado"
+        ]
+
+        for indice, columna in enumerate(columnas):
+            etiqueta = ctk.CTkLabel(
+                frame_tabla,
+                text=columna,
+                font=("Arial", 13, "bold")
+            )
+            etiqueta.grid(
+                row=0,
+                column=indice,
+                padx=8,
+                pady=12
+            )
+
+        # Muestra los datos de cada auto
+        for fila, auto in enumerate(autos, start=1):
+
+            datos = [
+                auto[0],
+                auto[1] if auto[1] else "-",
+                auto[2],
+                auto[3],
+                auto[4],
+                f"$ {float(auto[5]):,.2f}",
+                auto[6],
+                auto[14]
+            ]
+
+            for columna, dato in enumerate(datos):
+                etiqueta = ctk.CTkLabel(
+                    frame_tabla,
+                    text=str(dato)
+                )
+                etiqueta.grid(
+                    row=fila,
+                    column=columna,
+                    padx=8,
+                    pady=10
+                )
+    
+    def comparar_respaldo_interfaz(self, ventana):
+        """Compara el respaldo TXT con los datos registrados en MySQL"""
+
+        resultado = comparar_respaldo(self.conexion_db)
+
+        if resultado:
+            messagebox.showinfo(
+                "Respaldo verificado",
+                "El respaldo coincide con los datos de la base de datos"
+            )
+
+        else:
+            messagebox.showwarning(
+                "Diferencias encontradas",
+                "El respaldo presenta diferencias con la base de datos"
+            )
     # ==================================================
     # SECCION 3 - NAVEGACION ENTRE SECCIONES
     # ==================================================
@@ -97,9 +215,40 @@ class Aplicacion(ctk.CTk):
 
     # Abre la seccion de respaldo TXT
     def mostrar_respaldo(self):
-        self.abrir_seccion("Respaldo TXT")
+        """Muestra las opciones para gestionar los respaldos"""
 
-    
+        ventana = self.abrir_seccion("Gestión de respaldos")
+
+        # Boton para crear un respaldo
+        boton_crear = ctk.CTkButton(
+            ventana,
+            text="Crear respaldo",
+            width=220,
+            height=45,
+            command=lambda: self.crear_respaldo_interfaz(ventana)
+        )
+        boton_crear.pack(pady=10)
+
+        # Boton para consultar el respaldo
+        boton_leer = ctk.CTkButton(
+            ventana,
+            text="Consultar respaldo",
+            width=220,
+            height=45,
+            command=lambda: self.leer_respaldo_interfaz(ventana)
+        )
+        boton_leer.pack(pady=10)
+
+        # Boton para comparar el respaldo
+        boton_comparar = ctk.CTkButton(
+            ventana,
+            text="Comparar respaldos",
+            width=220,
+            height=45,
+            command=lambda: self.comparar_respaldo_interfaz(ventana)
+        )
+        boton_comparar.pack(pady=10)
+
     # ==================================================
     # SECCION 3.1 - BOTON DE NAVEGACION
     # ==================================================
@@ -135,7 +284,9 @@ class Aplicacion(ctk.CTk):
         )
         etiqueta.pack(pady=30)
 
-    
+        return ventana
+
+
     # ==================================================
     # SECCION 5 - ADMINISTRACION DE AUTOS
     # ==================================================
@@ -218,7 +369,7 @@ class Aplicacion(ctk.CTk):
             font=("Arial", 17, "bold"),
             command=self.abrir_inventario
         )
-        
+
         boton_inventario.grid(
             row=1,
             column=0,
@@ -241,7 +392,8 @@ class Aplicacion(ctk.CTk):
             padx=20,
             pady=25
         )
-    
+
+
     # ==================================================
     # SECCION 6 - FORMULARIO PARA AGREGAR AUTOS
     # ==================================================
@@ -298,8 +450,9 @@ class Aplicacion(ctk.CTk):
             ("color", "Color")
         ]
 
-        # Diccionario para almacenar las entradas
+        # Diccionarios para almacenar las entradas y las unidades
         entradas = {}
+        unidades = {}
 
         # Distribuye los campos en dos columnas
         for indice, (atributo, etiqueta_texto) in enumerate(campos):
@@ -319,20 +472,60 @@ class Aplicacion(ctk.CTk):
                 sticky="w"
             )
 
-            entrada = ctk.CTkEntry(
-                frame_campos,
-                width=250,
-                placeholder_text=f"Ingrese {etiqueta_texto.lower()}"
-            )
-            entrada.grid(
-                row=fila,
-                column=columna + 1,
-                padx=10,
-                pady=12
-            )
+            # Campos especiales para potencia y torque
+            if atributo in ("potencia", "torque"):
 
-            # Guarda la entrada asociada a su atributo
-            entradas[atributo] = entrada
+                frame_unidad = ctk.CTkFrame(
+                    frame_campos,
+                    fg_color="transparent"
+                )
+                frame_unidad.grid(
+                    row=fila,
+                    column=columna + 1,
+                    padx=10,
+                    pady=12
+                )
+
+                entrada = ctk.CTkEntry(
+                    frame_unidad,
+                    width=150,
+                    placeholder_text="Ingrese el valor"
+                )
+                entrada.pack(side="left", padx=(0, 5))
+
+                # Define las unidades disponibles
+                if atributo == "potencia":
+                    opciones = ["CV", "HP"]
+                else:
+                    opciones = ["Nm", "kgm"]
+
+                unidad = ctk.CTkComboBox(
+                    frame_unidad,
+                    values=opciones,
+                    width=90
+                )
+                unidad.pack(side="left")
+
+                # Guarda la entrada y la unidad seleccionada
+                entradas[atributo] = entrada
+                unidades[atributo] = unidad
+
+            else:
+
+                entrada = ctk.CTkEntry(
+                    frame_campos,
+                    width=250,
+                    placeholder_text=f"Ingrese {etiqueta_texto.lower()}"
+                )
+                entrada.grid(
+                    row=fila,
+                    column=columna + 1,
+                    padx=10,
+                    pady=12
+                )
+
+                # Guarda la entrada asociada a su atributo
+                entradas[atributo] = entrada
 
         # ==================================================
         # SUBSECCION 6.3 - ESTADO COMERCIAL
@@ -368,17 +561,18 @@ class Aplicacion(ctk.CTk):
         # ==================================================
 
         boton_guardar = ctk.CTkButton(
-        frame_principal,
-        text="Guardar auto",
-        width=220,
-        height=45,
-        command=lambda: self.guardar_auto(
-            entradas,
-            campo_estado,
-            ventana,
-            actualizar_tabla,
-            entrada_busqueda
-        )
+            frame_principal,
+            text="Guardar auto",
+            width=220,
+            height=45,
+            command=lambda: self.guardar_auto(
+                entradas,
+                unidades,
+                campo_estado,
+                ventana,
+                actualizar_tabla,
+                entrada_busqueda
+            )
         )
         boton_guardar.pack(pady=25)
 
@@ -387,7 +581,7 @@ class Aplicacion(ctk.CTk):
     # SECCION 7 - GUARDAR AUTO EN MYSQL
     # ==================================================
 
-    def guardar_auto(self, entradas, campo_estado, ventana, actualizar_tabla, entrada_busqueda):
+    def guardar_auto(self, entradas, unidades, campo_estado, ventana, actualizar_tabla, entrada_busqueda):
         """Recupera los datos del formulario y registra el auto"""
 
         # Obtiene los valores ingresados en el formulario
@@ -395,6 +589,13 @@ class Aplicacion(ctk.CTk):
 
         for atributo, entrada in entradas.items():
             datos[atributo] = entrada.get().strip()
+
+        # Normaliza la capitalizacion de los datos descriptivos
+        for atributo in [
+            "marca", "modelo", "motor", "combustible",
+            "transmision", "traccion", "color"
+        ]:
+            datos[atributo] = normalizar_texto(datos[atributo])
 
         # Convierte los campos numericos a sus tipos correspondientes
         try:
@@ -408,6 +609,10 @@ class Aplicacion(ctk.CTk):
                 "El año, precio y kilometraje deben tener valores numericos"
             )
             return
+
+        # Combina los valores de potencia y torque con sus unidades
+        datos["potencia"] = f"{datos['potencia']} {unidades['potencia'].get()}"
+        datos["torque"] = f"{datos['torque']} {unidades['torque'].get()}"
 
         # Convierte la matricula vacia en None
         if not datos["matricula"]:
@@ -455,9 +660,11 @@ class Aplicacion(ctk.CTk):
             )
 
 
+
     # ==================================================
     # SECCION 8 - INVENTARIO Y ADMINISTRACION DE AUTOS
     # ==================================================
+
     def abrir_inventario(self):
         """Muestra y permite administrar los autos registrados"""
 
@@ -653,7 +860,7 @@ class Aplicacion(ctk.CTk):
         # Carga todos los autos al abrir el inventario
         actualizar_tabla()
 
-    
+
     # ==================================================
     # SECCION 9 - DETALLES DEL AUTO
     # ==================================================
@@ -854,8 +1061,10 @@ class Aplicacion(ctk.CTk):
             ("color", "Color", auto[13])
         ]
 
-        # Diccionario para almacenar las entradas
+        
+        # Diccionarios para almacenar las entradas y las unidades
         entradas = {}
+        unidades = {}
 
         # Distribuye los campos en dos columnas
         for indice, (atributo, nombre, valor) in enumerate(campos):
@@ -875,21 +1084,86 @@ class Aplicacion(ctk.CTk):
                 sticky="w"
             )
 
-            entrada = ctk.CTkEntry(
-                frame_campos,
-                width=250
-            )
-            entrada.grid(
-                row=fila,
-                column=columna + 1,
-                padx=10,
-                pady=12
-            )
+            # Campos especiales para potencia y torque
+            if atributo in ("potencia", "torque"):
 
-            # Carga el valor actual del auto
-            entrada.insert(0, str(valor) if valor is not None else "")
+                frame_unidad = ctk.CTkFrame(
+                    frame_campos,
+                    fg_color="transparent"
+                )
+                frame_unidad.grid(
+                    row=fila,
+                    column=columna + 1,
+                    padx=10,
+                    pady=12
+                )
 
-            entradas[atributo] = entrada
+                entrada = ctk.CTkEntry(
+                    frame_unidad,
+                    width=150
+                )
+                entrada.pack(side="left", padx=(0, 5))
+
+                # Define las unidades disponibles
+                if atributo == "potencia":
+                    opciones = ["CV", "HP"]
+                    unidad_default = "CV"
+                else:
+                    opciones = ["Nm", "kgm"]
+                    unidad_default = "Nm"
+
+                # Recupera el valor y la unidad guardados
+                valor_actual = str(valor).strip() if valor is not None else ""
+                partes = valor_actual.rsplit(" ", 1)
+
+                # Comprueba la unidad sin distinguir mayusculas y minusculas
+                if len(partes) == 2:
+                    unidad_encontrada = next(
+                        (opcion for opcion in opciones
+                         if opcion.upper() == partes[1].strip().upper()),
+                        None
+                    )
+                else:
+                    unidad_encontrada = None
+
+                if unidad_encontrada:
+                    valor_actual = partes[0].strip()
+                    unidad_actual = unidad_encontrada
+                else:
+                    unidad_actual = unidad_default
+
+                entrada.insert(0, valor_actual)
+
+                unidad = ctk.CTkComboBox(
+                    frame_unidad,
+                    values=opciones,
+                    width=90
+                )
+                unidad.pack(side="left")
+                unidad.set(unidad_actual)
+
+                # Guarda la entrada y la unidad seleccionada
+                entradas[atributo] = entrada
+                unidades[atributo] = unidad
+
+            else:
+
+                entrada = ctk.CTkEntry(
+                    frame_campos,
+                    width=250
+                )
+                entrada.grid(
+                    row=fila,
+                    column=columna + 1,
+                    padx=10,
+                    pady=12
+                )
+
+                # Carga el valor actual del auto
+                entrada.insert(0, str(valor) if valor is not None else "")
+
+                entradas[atributo] = entrada
+
 
         # Campo para modificar el estado
         etiqueta_estado = ctk.CTkLabel(
@@ -923,7 +1197,7 @@ class Aplicacion(ctk.CTk):
             text="Guardar modificaciones",
             width=220,
             height=45,
-            command=lambda: self.guardar_modificacion_auto(id_auto, entradas, campo_estado, ventana, ventana_detalles, ventana_inventario)
+            command=lambda: self.guardar_modificacion_auto(id_auto, entradas, unidades, campo_estado, ventana, ventana_detalles, ventana_inventario)
         )
         boton_guardar.pack(pady=25)
 
@@ -932,7 +1206,8 @@ class Aplicacion(ctk.CTk):
     # SECCION 11 - GUARDAR MODIFICACIONES
     # ==================================================
 
-    def guardar_modificacion_auto(self, id_auto, entradas, campo_estado, ventana, ventana_detalles, ventana_inventario):
+    
+    def guardar_modificacion_auto(self, id_auto, entradas, unidades, campo_estado, ventana, ventana_detalles, ventana_inventario):
         """Recupera los datos modificados y actualiza el auto"""
 
         # Obtiene los valores ingresados
@@ -940,6 +1215,13 @@ class Aplicacion(ctk.CTk):
 
         for atributo, entrada in entradas.items():
             datos[atributo] = entrada.get().strip()
+
+        # Normaliza la capitalizacion de los datos descriptivos
+        for atributo in [
+            "marca", "modelo", "motor", "combustible",
+            "transmision", "traccion", "color"
+        ]:
+            datos[atributo] = normalizar_texto(datos[atributo])
 
         # Convierte los campos numericos
         try:
@@ -953,6 +1235,10 @@ class Aplicacion(ctk.CTk):
                 "El año, precio y kilometraje deben tener valores numericos"
             )
             return
+
+        # Combina los valores de potencia y torque con sus unidades
+        datos["potencia"] = f"{datos['potencia']} {unidades['potencia'].get()}"
+        datos["torque"] = f"{datos['torque']} {unidades['torque'].get()}"
 
         # Convierte la matricula vacia en None
         if not datos["matricula"]:
@@ -990,6 +1276,7 @@ class Aplicacion(ctk.CTk):
             # Cierra los formularios y actualiza los detalles
             ventana.destroy()
             ventana_detalles.destroy()
+
             # Actualiza la ventana del inventario
             ventana_inventario.destroy()
             self.abrir_inventario()
@@ -999,7 +1286,8 @@ class Aplicacion(ctk.CTk):
                 "Error de modificacion",
                 "No se pudieron actualizar los datos del auto"
             )
-        
+
+
 
     # ==================================================
     # SECCION 12 - ELIMINAR AUTOS
@@ -1044,6 +1332,7 @@ class Aplicacion(ctk.CTk):
                 "No se pudo eliminar el auto seleccionado"
             )
 
+
     # ==================================================
     # SECCION 13 - COMPARACION DE AUTOS
     # ==================================================
@@ -1077,7 +1366,7 @@ class Aplicacion(ctk.CTk):
             font=("Arial", 14)
         )
         subtitulo.pack(pady=5)
-    
+
         # ==================================================
         # SUBSECCION 13.2 - CARGAR AUTOS
         # ==================================================
@@ -1095,7 +1384,7 @@ class Aplicacion(ctk.CTk):
 
         # Obtiene los nombres para los selectores
         lista_opciones = list(opciones_autos.keys())
-        
+
         # ==================================================
         # SUBSECCION 13.3 - SELECTORES DE AUTOS
         # ==================================================
@@ -1124,7 +1413,7 @@ class Aplicacion(ctk.CTk):
                 width=350
             )
             selector_auto_2.pack(pady=15)
-            
+
         # ==================================================
         # SUBSECCION 13.4 - VALIDAR SELECCION
         # ==================================================
@@ -1149,8 +1438,8 @@ class Aplicacion(ctk.CTk):
         selector_auto_2.configure(
             command=lambda valor: validar_seleccion("auto_2")
         )
-    
-    
+
+
     # ==================================================
     # SECCION 14 - SELECCION DE AUTOS PARA COMPARAR
     # ==================================================
@@ -1206,7 +1495,7 @@ class Aplicacion(ctk.CTk):
             ).pack(pady=30)
 
             return
-        
+
         # ==================================================
         # SUBSECCION 14.3 - MOSTRAR AUTOS
         # ==================================================
@@ -1332,7 +1621,7 @@ class Aplicacion(ctk.CTk):
                     cambiar_seleccion(id_auto, boton)
             )
 
-     
+
     # ==================================================
     # SECCION 15 - COMPARACION DE AUTOS
     # ==================================================
@@ -1373,7 +1662,7 @@ class Aplicacion(ctk.CTk):
             font=("Arial", 26, "bold")
         )
         etiqueta_titulo.pack(pady=20)
-            
+
         # Contenedor desplazable de la tabla comparativa
         frame_comparacion = ctk.CTkScrollableFrame(
             ventana,
@@ -1391,7 +1680,7 @@ class Aplicacion(ctk.CTk):
         frame_comparacion.grid_columnconfigure(1, weight=2)
         frame_comparacion.grid_columnconfigure(2, weight=2)
 
-        
+
         # Encabezados con la identificacion de cada auto
         encabezados = [
             "Caracteristica",
@@ -1448,8 +1737,8 @@ class Aplicacion(ctk.CTk):
                 valor_2 = f"{valor_2:,.0f} km" if valor_2 is not None else "No especificado"
 
             elif indice == 9:
-                valor_1 = f"{valor_1} Nm" if valor_1 is not None else "No especificado"
-                valor_2 = f"{valor_2} Nm" if valor_2 is not None else "No especificado"
+                valor_1 = str(valor_1) if valor_1 is not None else "No especificado"
+                valor_2 = str(valor_2) if valor_2 is not None else "No especificado"
 
             else:
                 valor_1 = str(valor_1) if valor_1 is not None else "No especificado"
@@ -1515,73 +1804,15 @@ class Aplicacion(ctk.CTk):
             f"{auto_2[4]} - {auto_2[13]} - {auto_2[1]}"
         )
 
-        def obtener_numero(valor):
-            """Convierte un valor numerico o con unidad a float"""
-
-            if valor is None:
-                return None
-
-            try:
-                return float(valor)
-
-            except (TypeError, ValueError):
-                import re
-
-                texto = str(valor).strip().upper().replace(",", ".")
-
-                coincidencia = re.search(
-                    r"-?\d+(?:\.\d+)?",
-                    texto
-                )
-
-                if not coincidencia:
-                    return None
-
-                numero = float(coincidencia.group())
-
-                # Convierte HP a CV para comparar en la misma unidad
-                if "HP" in texto and "CV" not in texto:
-                    numero *= 1.01387
-
-                return numero
-
-        # Analiza las diferencias entre dos valores
-        def analizar_diferencia(nombre, valor_1, valor_2, unidad, menor_es_mejor):
-            """Compara dos valores y determina cual destaca"""
-
-            numero_1 = obtener_numero(valor_1)
-            numero_2 = obtener_numero(valor_2)
-
-            if numero_1 is None or numero_2 is None:
-                return f"{nombre}: Datos insuficientes para comparar"
-
-            diferencia = abs(numero_1 - numero_2)
-
-            if numero_1 == numero_2:
-                return f"{nombre}: Ambos autos tienen el mismo valor"
-
-            if menor_es_mejor:
-                ganador = nombre_auto_1 if numero_1 < numero_2 else nombre_auto_2
-            else:
-                ganador = nombre_auto_1 if numero_1 > numero_2 else nombre_auto_2
-
-            if unidad == "$":
-                diferencia_formateada = f"${diferencia:,.2f}"
-            else:
-                diferencia_formateada = f"{diferencia:,.2f} {unidad}"
-
-            return (
-                f"{nombre}: Diferencia de {diferencia_formateada} "
-                f"- Destaca {ganador}"
-            )
-
         # Calcula las diferencias principales
         resumen_precio = analizar_diferencia(
             "Precio",
             auto_1[5],
             auto_2[5],
             "$",
-            True
+            True,
+            nombre_auto_1,
+            nombre_auto_2
         )
 
         resumen_kilometraje = analizar_diferencia(
@@ -1589,7 +1820,9 @@ class Aplicacion(ctk.CTk):
             auto_1[6],
             auto_2[6],
             "km",
-            True
+            True,
+            nombre_auto_1,
+            nombre_auto_2
         )
 
         resumen_potencia = analizar_diferencia(
@@ -1597,7 +1830,19 @@ class Aplicacion(ctk.CTk):
             auto_1[8],
             auto_2[8],
             "CV",
-            False
+            False,
+            nombre_auto_1,
+            nombre_auto_2
+        )
+
+        resumen_torque = analizar_diferencia(
+            "Torque",
+            auto_1[9],
+            auto_2[9],
+            "Nm",
+            False,
+            nombre_auto_1,
+            nombre_auto_2
         )
 
         # Contenedor del resumen
@@ -1619,7 +1864,8 @@ class Aplicacion(ctk.CTk):
         for resultado in [
             resumen_precio,
             resumen_kilometraje,
-            resumen_potencia
+            resumen_potencia,
+            resumen_torque
         ]:
             etiqueta = ctk.CTkLabel(
                 frame_resumen,
@@ -1627,9 +1873,6 @@ class Aplicacion(ctk.CTk):
                 font=("Arial", 13)
             )
             etiqueta.pack(pady=5)
-
-
-
 
 
 

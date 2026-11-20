@@ -229,3 +229,17 @@ def obtener_auto(id_auto, conexion_db):
         auto = cursor.fetchone()
 
     return auto
+
+
+def listar_autos_recomendables(conexion_db):
+    """Obtiene los autos que no se encuentran vendidos"""
+
+    autos = listar_autos(conexion_db)
+
+    # Excluye los autos vendidos del inventario
+    autos_recomendables = [
+        auto for auto in autos
+        if auto[14] != "Vendido"
+    ]
+
+    return autos_recomendables

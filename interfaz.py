@@ -1,10 +1,11 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from clase_autos import Auto
-from administracion_autos import agregar_auto, listar_autos, obtener_auto, modificar_auto, eliminar_auto as eliminar_auto_db, buscar_autos
+from administracion_autos import agregar_auto, listar_autos, obtener_auto, modificar_auto, eliminar_auto as eliminar_auto_db, buscar_autos, listar_autos_recomendables
 from analisis_autos import analizar_diferencia
 from archivos_txt import crear_respaldo, leer_respaldo, comparar_respaldo
 from validaciones import normalizar_texto
+from recomendaciones import procesar_recomendacion as procesar_recomendacion_gemini
 
 # ==================================================
 # CLASE PRINCIPAL DE LA APLICACION
@@ -712,7 +713,37 @@ class Aplicacion(ctk.CTk):
         )
 
         # ==================================================
-        # SUBSECCION 8.4 - CARGAR Y MOSTRAR AUTOS
+        # SUBSECCION 8.4 - RECOMENDACION INTELIGENTE
+        # ==================================================
+
+        frame_recomendacion = ctk.CTkFrame(ventana)
+        frame_recomendacion.pack(fill="x", padx=20, pady=(5, 15))
+
+        # Texto introductorio
+        ctk.CTkLabel(
+            frame_recomendacion,
+            text="¿No sabes que auto elegir?",
+            font=("Arial", 18, "bold")
+        ).pack(pady=(15, 5))
+
+        ctk.CTkLabel(
+            frame_recomendacion,
+            text="Conoce tus preferencias y encontra el auto que mejor se adapte a vos",
+            font=("Arial", 13)
+        ).pack(pady=5)
+
+        # Boton para iniciar la recomendacion inteligente
+        boton_recomendacion = ctk.CTkButton(
+            frame_recomendacion,
+            text="Recomendacion inteligente",
+            width=220,
+            height=40,
+            command=self.abrir_formulario_recomendacion
+        )
+        boton_recomendacion.pack(pady=(10, 15))
+
+        # ==================================================
+        # SUBSECCION 8.5 - CARGAR Y MOSTRAR AUTOS
         # ==================================================
 
         def actualizar_tabla(busqueda=""):
@@ -807,7 +838,7 @@ class Aplicacion(ctk.CTk):
                 )
 
         # ==================================================
-        # SUBSECCION 8.5 - BOTONES DE BUSQUEDA
+        # SUBSECCION 8.6 - BOTONES DE BUSQUEDA
         # ==================================================
 
         boton_buscar = ctk.CTkButton(
@@ -831,7 +862,7 @@ class Aplicacion(ctk.CTk):
         boton_limpiar.pack(side="left", padx=5)
 
         # ==================================================
-        # SUBSECCION 8.6 - BOTON PARA AGREGAR AUTOS
+        # SUBSECCION 8.7 - BOTON PARA AGREGAR AUTOS
         # ==================================================
 
         boton_agregar = ctk.CTkButton(
@@ -1873,6 +1904,460 @@ class Aplicacion(ctk.CTk):
                 font=("Arial", 13)
             )
             etiqueta.pack(pady=5)
+
+    # ==================================================
+    # SECCION 16 - FORMULARIO DE RECOMENDACION INTELIGENTE
+    # ==================================================
+
+    def abrir_formulario_recomendacion(self):
+        """Muestra el formulario para conocer las preferencias del cliente"""
+
+        # Crea la ventana del formulario
+        ventana = ctk.CTkToplevel(self)
+        ventana.title("Recomendacion inteligente")
+        ventana.geometry("750x800")
+
+        self.agregar_boton_volver(ventana)
+
+        # Contenedor con desplazamiento
+        frame_principal = ctk.CTkScrollableFrame(ventana)
+        frame_principal.pack(
+            fill="both",
+            expand=True,
+            padx=20,
+            pady=15
+        )
+
+        # ==================================================
+        # SUBSECCION 16.1 - TITULO
+        # ==================================================
+
+        ctk.CTkLabel(
+            frame_principal,
+            text="Recomendacion inteligente",
+            font=("Arial", 24, "bold")
+        ).pack(pady=15)
+
+        ctk.CTkLabel(
+            frame_principal,
+            text="Completa tus preferencias para encontrar el auto ideal",
+            font=("Arial", 14)
+        ).pack(pady=5)
+
+        # ==================================================
+        # SUBSECCION 16.2 - USO DEL AUTO
+        # ==================================================
+
+        ctk.CTkLabel(
+            frame_principal,
+            text="1. ¿Para que buscas el auto?",
+            font=("Arial", 16, "bold")
+        ).pack(anchor="w", pady=(20, 10))
+
+        uso_var = ctk.StringVar(value="")
+
+        for opcion in [
+            "Familiar",
+            "Trabajo",
+            "Uso urbano",
+            "Viajes y ruta",
+            "Deportivo y recreativo",
+            "Uso mixto"
+        ]:
+            ctk.CTkRadioButton(
+                frame_principal,
+                text=opcion,
+                variable=uso_var,
+                value=opcion
+            ).pack(anchor="w", padx=15, pady=3)
+
+        # ==================================================
+        # SUBSECCION 16.3 - PRESUPUESTO
+        # ==================================================
+
+        ctk.CTkLabel(
+            frame_principal,
+            text="2. ¿Que presupuesto tienes pensado?",
+            font=("Arial", 16, "bold")
+        ).pack(anchor="w", pady=(25, 10))
+
+        presupuesto_var = ctk.StringVar(value="")
+
+        presupuestos = [
+            "Economico - Hasta $20.000.000",
+            "Medio - $20.000.000 a $35.000.000",
+            "Alto - $35.000.000 a $60.000.000",
+            "Premium o lujoso - Mas de $60.000.000",
+            "Sin limite definido"
+        ]
+
+        for opcion in presupuestos:
+            ctk.CTkRadioButton(
+                frame_principal,
+                text=opcion,
+                variable=presupuesto_var,
+                value=opcion
+            ).pack(anchor="w", padx=15, pady=3)
+
+        # ==================================================
+        # SUBSECCION 16.4 - CARACTERISTICAS PRIORITARIAS
+        # ==================================================
+
+        ctk.CTkLabel(
+            frame_principal,
+            text="3. ¿Que caracteristicas priorizas?",
+            font=("Arial", 16, "bold")
+        ).pack(anchor="w", pady=(25, 10))
+
+        prioridades_vars = {}
+
+        prioridades = [
+            "Bajo consumo",
+            "Comodidad",
+            "Confiabilidad",
+            "Potencia y rendimiento",
+            "Seguridad",
+            "Espacio y capacidad",
+            "Tecnologia y equipamiento",
+            "Bajo mantenimiento"
+        ]
+
+        for opcion in prioridades:
+            variable = ctk.BooleanVar(value=False)
+            prioridades_vars[opcion] = variable
+
+            ctk.CTkCheckBox(
+                frame_principal,
+                text=opcion,
+                variable=variable
+            ).pack(anchor="w", padx=15, pady=3)
+
+        # ==================================================
+        # SUBSECCION 16.5 - TIPO DE TRANSMISION
+        # ==================================================
+
+        ctk.CTkLabel(
+            frame_principal,
+            text="4. ¿Que tipo de transmision prefieres?",
+            font=("Arial", 16, "bold")
+        ).pack(anchor="w", pady=(25, 10))
+
+        transmision_var = ctk.StringVar(value="")
+
+        for opcion in ["Manual", "Automatica", "Indistinto"]:
+            ctk.CTkRadioButton(
+                frame_principal,
+                text=opcion,
+                variable=transmision_var,
+                value=opcion
+            ).pack(anchor="w", padx=15, pady=3)
+
+       
+        # ==================================================
+        # SUBSECCION 16.6 - PROCESAR PREFERENCIAS
+        # ==================================================
+
+        def procesar_recomendacion():
+            """Obtiene las preferencias y solicita una recomendacion a Gemini"""
+
+            # Comprueba que se hayan completado las opciones obligatorias
+            if not uso_var.get() or not presupuesto_var.get() or not transmision_var.get():
+                messagebox.showwarning(
+                    "Datos incompletos",
+                    "Completa todas las opciones antes de generar la recomendacion"
+                )
+                return
+
+            # Obtiene las caracteristicas seleccionadas
+            prioridades = [
+                opcion
+                for opcion, variable in prioridades_vars.items()
+                if variable.get()
+            ]
+
+            if not prioridades:
+                messagebox.showwarning(
+                    "Datos incompletos",
+                    "Selecciona al menos una caracteristica prioritaria"
+                )
+                return
+
+            # Obtiene los autos que no se encuentran vendidos
+            autos = listar_autos_recomendables(self.conexion_db)
+
+            if not autos:
+                messagebox.showwarning(
+                    "Sin autos disponibles",
+                    "No hay autos para analizar en el inventario"
+                )
+                return
+
+            # Organiza las respuestas del cliente
+            preferencias = {
+                "uso": uso_var.get(),
+                "presupuesto": presupuesto_var.get(),
+                "prioridades": ", ".join(prioridades),
+                "transmision": transmision_var.get()
+            }
+
+            # Procesa la recomendacion y recupera los datos del auto elegido
+            respuesta = procesar_recomendacion_gemini(
+                autos,
+                preferencias,
+                self.conexion_db
+            )
+
+            # Comprueba que se haya podido procesar la recomendacion
+            if respuesta is None:
+                messagebox.showerror(
+                    "Error en la recomendacion",
+                    "No se pudo generar una recomendacion valida. Intenta nuevamente"
+                )
+                return
+            
+            # Muestra el resultado en una nueva ventana
+            ventana_resultado = ctk.CTkToplevel(ventana)
+            ventana_resultado.title("Resultado de la recomendacion")
+            ventana_resultado.geometry("750x650")
+
+            self.agregar_boton_volver(ventana_resultado)
+
+            ctk.CTkLabel(
+                ventana_resultado,
+                text="Recomendacion para el cliente",
+                font=("Arial", 22, "bold")
+            ).pack(pady=15)
+
+            # Obtiene los datos del resultado de Gemini y del auto recomendado
+            resultado = respuesta["resultado"]
+            auto = respuesta["auto"]
+
+            # Contenedor principal del resultado
+            frame_resultado = ctk.CTkScrollableFrame(ventana_resultado)
+            frame_resultado.pack(
+                fill="both",
+                expand=True,
+                padx=20,
+                pady=15
+            )
+
+            # Tarjeta principal del auto recomendado
+            frame_auto = ctk.CTkFrame(frame_resultado, corner_radius=12)
+            frame_auto.pack(fill="x", padx=10, pady=10)
+
+            ctk.CTkLabel(
+                frame_auto,
+                text="AUTO RECOMENDADO",
+                font=("Arial", 13, "bold"),
+                text_color="gray"
+            ).pack(anchor="w", padx=20, pady=(15, 5))
+
+            ctk.CTkLabel(
+                frame_auto,
+                text=f"{auto[2]} {auto[3]} ({auto[4]})",
+                font=("Arial", 24, "bold")
+            ).pack(anchor="w", padx=20, pady=5)
+
+            ctk.CTkLabel(
+                frame_auto,
+                text=f"${auto[5]:,.2f}",
+                font=("Arial", 22, "bold"),
+                text_color="#2FA572"
+            ).pack(anchor="w", padx=20, pady=5)
+
+            # Contenedor de las caracteristicas principales
+            frame_caracteristicas = ctk.CTkFrame(
+                frame_auto,
+                fg_color="transparent"
+            )
+            frame_caracteristicas.pack(fill="x", padx=15, pady=(5, 15))
+
+            # Organiza las caracteristicas en dos columnas
+            caracteristicas = [
+                ("KILOMETRAJE", f"{auto[6]:,} km"),
+                ("MOTOR", auto[7]),
+                ("POTENCIA", auto[8]),
+                ("TORQUE", auto[9]),
+                ("COMBUSTIBLE", auto[10]),
+                ("TRANSMISION", auto[11])
+            ]
+
+            for i, (titulo, valor) in enumerate(caracteristicas):
+
+                fila = i // 2
+                columna = i % 2
+
+                frame_dato = ctk.CTkFrame(
+                    frame_caracteristicas,
+                    corner_radius=8
+                )
+                frame_dato.grid(
+                    row=fila,
+                    column=columna,
+                    padx=5,
+                    pady=5,
+                    sticky="nsew"
+                )
+
+                ctk.CTkLabel(
+                    frame_dato,
+                    text=titulo,
+                    font=("Arial", 10, "bold"),
+                    text_color="gray"
+                ).pack(anchor="w", padx=12, pady=(8, 2))
+
+                ctk.CTkLabel(
+                    frame_dato,
+                    text=str(valor),
+                    font=("Arial", 14, "bold")
+                ).pack(anchor="w", padx=12, pady=(0, 8))
+
+            # Distribuye el espacio entre las dos columnas
+            frame_caracteristicas.grid_columnconfigure(0, weight=1)
+            frame_caracteristicas.grid_columnconfigure(1, weight=1)
+
+            # Obtiene los datos del resultado de Gemini y del auto recomendado
+            resultado = respuesta["resultado"]
+            auto = respuesta["auto"]
+
+            # Tarjeta principal del auto recomendado
+            frame_auto = ctk.CTkFrame(frame_resultado, corner_radius=12)
+            frame_auto.pack(fill="x", padx=10, pady=10)
+
+            # Seccion del nivel de ajuste
+            frame_ajuste = ctk.CTkFrame(frame_resultado, corner_radius=12)
+            frame_ajuste.pack(fill="x", padx=10, pady=10)
+
+            nivel_ajuste = resultado.get("nivel_ajuste", "Ninguno")
+
+            colores_ajuste = {
+                "Alto": "#2FA572",
+                "Medio": "#3B82F6",
+                "Bajo": "#E59A32",
+                "Ninguno": "#D9534F"
+            }
+
+            ctk.CTkLabel(
+                frame_ajuste,
+                text="NIVEL DE AJUSTE",
+                font=("Arial", 13, "bold"),
+                text_color="gray"
+            ).pack(anchor="w", padx=20, pady=(12, 5))
+
+            ctk.CTkLabel(
+                frame_ajuste,
+                text=nivel_ajuste,
+                font=("Arial", 20, "bold"),
+                text_color=colores_ajuste.get(nivel_ajuste, "gray")
+            ).pack(anchor="w", padx=20, pady=(0, 12))
+
+            # Seccion del analisis de Gemini
+            frame_analisis = ctk.CTkFrame(frame_resultado, corner_radius=12)
+            frame_analisis.pack(fill="x", padx=10, pady=10)
+
+            ctk.CTkLabel(
+                frame_analisis,
+                text="ANALISIS DE LA RECOMENDACION",
+                font=("Arial", 14, "bold")
+            ).pack(anchor="w", padx=20, pady=(15, 5))
+
+            ctk.CTkLabel(
+                frame_analisis,
+                text=resultado.get("analisis", "Sin analisis disponible"),
+                font=("Arial", 13),
+                justify="left",
+                wraplength=650
+            ).pack(anchor="w", padx=20, pady=(5, 15))
+
+            # Obtiene los datos del resultado de Gemini y del auto recomendado
+            resultado = respuesta["resultado"]
+            auto = respuesta["auto"]
+
+            # Organiza la informacion para mostrarla al cliente
+            texto_resultado = f"""
+            AUTO RECOMENDADO
+
+            {auto[2]} {auto[3]} ({auto[4]})
+
+            Precio: ${auto[5]:,.2f}
+            Kilometraje: {auto[6]:,} km
+            Motor: {auto[7]}
+            Potencia: {auto[8]}
+            Torque: {auto[9]}
+            Combustible: {auto[10]}
+            Transmision: {auto[11]}
+            Traccion: {auto[12]}
+            Color: {auto[13]}
+
+            NIVEL DE AJUSTE
+
+            {resultado.get("nivel_ajuste", "No especificado")}
+
+            ANALISIS
+
+            {resultado.get("analisis", "Sin analisis disponible")}
+
+            VENTAJAS
+
+            {chr(10).join("- " + ventaja for ventaja in resultado.get("ventajas", []))}
+
+            ASPECTOS A CONSIDERAR
+
+            {chr(10).join("- " + aspecto for aspecto in resultado.get("aspectos_a_considerar", []))}
+            """
+
+        # Seccion de ventajas y aspectos a considerar
+            frame_detalles = ctk.CTkFrame(frame_resultado, fg_color="transparent")
+            frame_detalles.pack(fill="x", padx=10, pady=5)
+
+            # Tarjeta de ventajas
+            frame_ventajas = ctk.CTkFrame(frame_detalles, corner_radius=12)
+            frame_ventajas.pack(fill="x", pady=5)
+
+            ctk.CTkLabel(
+                frame_ventajas,
+                text="VENTAJAS",
+                font=("Arial", 14, "bold"),
+                text_color="#2FA572"
+            ).pack(anchor="w", padx=20, pady=(12, 5))
+
+            for ventaja in resultado.get("ventajas", []):
+                ctk.CTkLabel(
+                    frame_ventajas,
+                    text=f"✓  {ventaja}",
+                    font=("Arial", 13),
+                    justify="left",
+                    wraplength=650
+                ).pack(anchor="w", padx=20, pady=3)
+
+            # Tarjeta de aspectos a considerar
+            frame_aspectos = ctk.CTkFrame(frame_detalles, corner_radius=12)
+            frame_aspectos.pack(fill="x", pady=5)
+
+            ctk.CTkLabel(
+                frame_aspectos,
+                text="ASPECTOS A CONSIDERAR",
+                font=("Arial", 14, "bold"),
+                text_color="#E59A32"
+            ).pack(anchor="w", padx=20, pady=(12, 5))
+
+            for aspecto in resultado.get("aspectos_a_considerar", []):
+                ctk.CTkLabel(
+                    frame_aspectos,
+                    text=f"•  {aspecto}",
+                    font=("Arial", 13),
+                    justify="left",
+                    wraplength=650
+                ).pack(anchor="w", padx=20, pady=3)
+
+        boton_generar = ctk.CTkButton(
+            frame_principal,
+            text="Generar recomendacion",
+            width=220,
+            command=procesar_recomendacion
+        )
+        boton_generar.pack(pady=30)
+
 
 
 

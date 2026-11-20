@@ -1,3 +1,5 @@
 2|Corolla001|Toyota|Corolla|2025|25000000.00|2000|2.0|170 CV|200 Nm|Nafta|Automatica|Delantera|Blanco|Disponible
 3|None|Toyota|Corolla|2023|25000000.00|0|2.0|170 CV|200 Nm|Nafta|Automatica|Delantera|Gris|Reservado
 5|SUPRA001|Toyota|Supra MK4 3.0 Turbo|1997|65000000.00|85000|2jZ-GTE 3.0L|320 HP|427 Nm|Nafta|Manual 6 velocidades|Trasera|Negro|Disponible
+7|GTR2017|Nissan|Gt-R R35|2017|125000000.00|42000|Vr38Dett 3.8 V6 Biturbo|600 CV|650 Nm|Nafta|Automatica Dct|Integral|Azul|Disponible
+8|AC456EF|Nissan|350Z Z33|2005|44000000.00|112000|Vq35De V6|287 HP|371 Nm|Nafta|Manual|Trasera|Azul|Disponible
